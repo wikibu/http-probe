@@ -55,6 +55,10 @@ main() {
     echo "开始探测: $URL"
     echo "间隔: ${INTERVAL}s, 次数: ${COUNT:-无限}"
 
+    local LOG_FILE
+    LOG_FILE="$(pwd)/probe-results-$(date +%Y%m%d-%H%M%S).log"
+    echo "日志文件: $LOG_FILE" > "$LOG_FILE"
+
     # bash 3.2 (macOS default) does not support declare -A, so use a space-separated
     # string + sort|uniq -c for counting. Fine for typical probe counts.
     local all_codes=""
@@ -72,6 +76,35 @@ main() {
     probe_once() {
         local http_code
         http_code=$(curl -s -w "%{http_code}" --output /dev/null --max-time 30 "$URL" 2>/dev/null) || http_code="000"
+
+        if [[ "$http_code" != "200" ]]; then
+            local timestamp
+            timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+            local headers
+            headers=$(curl -s -D - --output /dev/null --max-time 30 "$URL" 2>/dev/null || true)
+
+            echo ""
+            echo "=== 非200响应 ==="
+            echo "时间: $timestamp"
+            echo "URL: $URL"
+            echo "状态码: $http_code"
+            echo "响应头:"
+            echo "$headers"
+            echo "================"
+            echo ""
+
+            {
+                echo ""
+                echo "=== 非200响应 ==="
+                echo "时间: $timestamp"
+                echo "URL: $URL"
+                echo "状态码: $http_code"
+                echo "响应头:"
+                echo "$headers"
+                echo "================"
+                echo ""
+            } >> "$LOG_FILE"
+        fi
 
         if [[ -z "$all_codes" ]]; then
             all_codes="$http_code"
