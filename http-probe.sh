@@ -4,6 +4,9 @@ set -euo pipefail
 INTERVAL=1
 COUNT=0
 URL=""
+ALL_CODES=""
+TOTAL=0
+LOG_FILE=""
 
 usage() {
     local exit_code="${1:-1}"
@@ -22,19 +25,34 @@ parse_args() {
         usage
     fi
 
-    # Parse options first so unknown flags are caught before URL assignment
-    while getopts ":i:c:h" opt; do
-        case "$opt" in
-            i) INTERVAL="$OPTARG" ;;
-            c) COUNT="$OPTARG" ;;
-            h) usage 0 ;;
-            *) usage ;;
+    # Extract URL (first non-option argument), then parse options from the rest
+    local positional=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -i)
+                INTERVAL="$2"
+                shift 2
+                ;;
+            -c)
+                COUNT="$2"
+                shift 2
+                ;;
+            -h)
+                usage 0
+                ;;
+            -*)
+                usage
+                ;;
+            *)
+                if [[ -z "$URL" ]]; then
+                    URL="$1"
+                fi
+                positional+=("$1")
+                shift
+                ;;
         esac
     done
-    shift $((OPTIND - 1))
 
-    # URL is the first positional argument
-    URL="${1:-}"
     if [[ -z "$URL" ]]; then
         usage
     fi
@@ -55,23 +73,46 @@ main() {
     echo "开始探测: $URL"
     echo "间隔: ${INTERVAL}s, 次数: ${COUNT:-无限}"
 
-    local LOG_FILE
     LOG_FILE="$(pwd)/probe-results-$(date +%Y%m%d-%H%M%S).log"
     echo "日志文件: $LOG_FILE" > "$LOG_FILE"
 
     # bash 3.2 (macOS default) does not support declare -A, so use a space-separated
     # string + sort|uniq -c for counting. Fine for typical probe counts.
-    local all_codes=""
-    local total=0
+    ALL_CODES=""
+    TOTAL=0
     local current=0
 
     print_stats() {
         local line
-        line=$(echo "$all_codes" | tr ' ' '\n' | sort | uniq -c | awk '{printf "[%s] %s | ", $2, $1}')
+        line=$(echo "$ALL_CODES" | tr ' ' '\n' | sort | uniq -c | awk '{printf "[%s] %s | ", $2, $1}')
         line="${line% |}"
-        line="${line}total: ${total}"
+        line="${line}total: ${TOTAL}"
         echo "$line"
     }
+
+    print_final_summary() {
+        echo ""
+        echo "=== 最终统计 ==="
+        if [[ -n "$ALL_CODES" ]]; then
+            print_stats
+        else
+            echo "total: 0"
+        fi
+        echo "=== 统计结束 ==="
+
+        {
+            echo ""
+            echo "=== 最终统计 ==="
+            if [[ -n "$ALL_CODES" ]]; then
+                print_stats
+            else
+                echo "total: 0"
+            fi
+            echo "=== 统计结束 ==="
+        } >> "$LOG_FILE" 2>/dev/null || true
+    }
+
+    trap print_final_summary EXIT
 
     probe_once() {
         local http_code response
@@ -99,12 +140,12 @@ BLOCK
             echo "$block" >> "$LOG_FILE"
         fi
 
-        if [[ -z "$all_codes" ]]; then
-            all_codes="$http_code"
+        if [[ -z "$ALL_CODES" ]]; then
+            ALL_CODES="$http_code"
         else
-            all_codes="$all_codes $http_code"
+            ALL_CODES="$ALL_CODES $http_code"
         fi
-        total=$((total + 1))
+        TOTAL=$((TOTAL + 1))
 
         print_stats
     }
