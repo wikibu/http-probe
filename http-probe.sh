@@ -6,6 +6,7 @@ COUNT=0
 URL=""
 
 usage() {
+    local exit_code="${1:-1}"
     echo "用法: $0 <URL> [-i <interval>] [-c <count>]"
     echo ""
     echo "参数:"
@@ -13,7 +14,7 @@ usage() {
     echo "  -i interval  请求间隔（秒），默认 1"
     echo "  -c count     探测次数，默认 0（无限，直到 Ctrl+C）"
     echo "  -h           打印帮助信息"
-    exit 1
+    exit "$exit_code"
 }
 
 parse_args() {
@@ -21,21 +22,20 @@ parse_args() {
         usage
     fi
 
-    # Check for -h anywhere in arguments
-    for arg in "$@"; do
-        if [[ "$arg" == "-h" ]]; then
-            usage
-        fi
-    done
+    # If first arg is -h, show help immediately
+    if [[ "${1:-}" == "-h" ]]; then
+        usage 0
+    fi
 
     # Parse options; URL is the first positional (non-option) argument
     URL="$1"
     shift
 
-    while getopts ":i:c:" opt; do
+    while getopts ":i:c:h" opt; do
         case "$opt" in
             i) INTERVAL="$OPTARG" ;;
             c) COUNT="$OPTARG" ;;
+            h) usage 0 ;;
             *) usage ;;
         esac
     done
@@ -50,7 +50,7 @@ parse_args() {
     fi
 
     if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
-        echo "错误: count 必须是正整数" >&2
+        echo "错误: count 必须是非负整数" >&2
         exit 1
     fi
 }
