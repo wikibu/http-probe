@@ -22,15 +22,7 @@ parse_args() {
         usage
     fi
 
-    # If first arg is -h, show help immediately
-    if [[ "${1:-}" == "-h" ]]; then
-        usage 0
-    fi
-
-    # Parse options; URL is the first positional (non-option) argument
-    URL="$1"
-    shift
-
+    # Parse options first so unknown flags are caught before URL assignment
     while getopts ":i:c:h" opt; do
         case "$opt" in
             i) INTERVAL="$OPTARG" ;;
@@ -39,13 +31,16 @@ parse_args() {
             *) usage ;;
         esac
     done
+    shift $((OPTIND - 1))
 
+    # URL is the first positional argument
+    URL="${1:-}"
     if [[ -z "$URL" ]]; then
         usage
     fi
 
     if ! [[ "$INTERVAL" =~ ^[0-9]+\.?[0-9]*$ ]]; then
-        echo "错误: interval 必须是数字" >&2
+        echo "错误: interval 必须是非负数" >&2
         exit 1
     fi
 
