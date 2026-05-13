@@ -26,14 +26,15 @@ parse_args() {
     fi
 
     # Extract URL (first non-option argument), then parse options from the rest
-    local positional=()
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -i)
+                [[ -z "${2:-}" ]] && usage
                 INTERVAL="$2"
                 shift 2
                 ;;
             -c)
+                [[ -z "${2:-}" ]] && usage
                 COUNT="$2"
                 shift 2
                 ;;
@@ -47,7 +48,6 @@ parse_args() {
                 if [[ -z "$URL" ]]; then
                     URL="$1"
                 fi
-                positional+=("$1")
                 shift
                 ;;
         esac
