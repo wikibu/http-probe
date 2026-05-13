@@ -74,36 +74,29 @@ main() {
     }
 
     probe_once() {
-        local http_code
+        local http_code response
         http_code=$(curl -s -w "%{http_code}" --output /dev/null --max-time 30 "$URL" 2>/dev/null) || http_code="000"
 
         if [[ "$http_code" != "200" ]]; then
-            local timestamp
+            local timestamp headers
             timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-            local headers
-            headers=$(curl -s -D - --output /dev/null --max-time 30 "$URL" 2>/dev/null || true)
+            response=$(curl -s -D - --output /dev/null --max-time 30 "$URL" 2>/dev/null || true)
+            headers="$response"
 
-            echo ""
-            echo "=== 非200响应 ==="
-            echo "时间: $timestamp"
-            echo "URL: $URL"
-            echo "状态码: $http_code"
-            echo "响应头:"
-            echo "$headers"
-            echo "================"
-            echo ""
+            local block
+            block=$(cat <<BLOCK
 
-            {
-                echo ""
-                echo "=== 非200响应 ==="
-                echo "时间: $timestamp"
-                echo "URL: $URL"
-                echo "状态码: $http_code"
-                echo "响应头:"
-                echo "$headers"
-                echo "================"
-                echo ""
-            } >> "$LOG_FILE"
+=== 非200响应 ===
+时间: $timestamp
+URL: $URL
+状态码: $http_code
+响应头:
+${headers:-（无响应头）}
+================
+BLOCK
+)
+            echo "$block"
+            echo "$block" >> "$LOG_FILE"
         fi
 
         if [[ -z "$all_codes" ]]; then
