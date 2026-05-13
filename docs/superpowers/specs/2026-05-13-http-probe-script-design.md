@@ -29,7 +29,7 @@ metadata:
 3. 创建日志文件：当前目录下的 `probe-results-YYYYMMDD-HHMMSS.log`
 4. 循环：发送 `curl -s -w "%{http_code}" --output /dev/null` 请求，捕获状态码，计数器递增
 5. 每次请求后，打印更新后的计数到屏幕（例如 `[200] 3 | [404] 1 | total: 4`）
-6. 非 200 时：再次请求 `curl -s -D - -w "%{http_code}" --output -` 获取响应头和响应体，打印时间戳、请求 URL、响应头、响应体到屏幕，追加到日志文件
+6. 非 200 时：再次请求 `curl -s -D /dev/stderr --output /dev/null` 获取响应头，打印时间戳、请求 URL、响应头到屏幕，追加到日志文件
 7. Ctrl+C 时：通过 `trap SIGINT` 捕获，打印最终统计到屏幕和日志文件，干净退出
 8. 达到指定次数时：打印最终统计并退出
 
