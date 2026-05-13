@@ -54,6 +54,44 @@ main() {
     parse_args "$@"
     echo "开始探测: $URL"
     echo "间隔: ${INTERVAL}s, 次数: ${COUNT:-无限}"
+
+    local all_codes=""
+    local total=0
+    local current=0
+
+    print_stats() {
+        local line
+        line=$(echo "$all_codes" | tr ' ' '\n' | sort | uniq -c | awk '{printf "[%s] %s | ", $2, $1}')
+        line="${line}total: ${total}"
+        echo "$line"
+    }
+
+    probe_once() {
+        local http_code
+        http_code=$(curl -s -w "%{http_code}" --output /dev/null --max-time 30 "$URL" 2>/dev/null) || http_code="000"
+
+        if [[ -z "$all_codes" ]]; then
+            all_codes="$http_code"
+        else
+            all_codes="$all_codes $http_code"
+        fi
+        total=$((total + 1))
+
+        print_stats
+    }
+
+    while true; do
+        if [[ "$COUNT" -gt 0 && "$current" -ge "$COUNT" ]]; then
+            break
+        fi
+
+        probe_once
+        current=$((current + 1))
+
+        if [[ "$INTERVAL" != "0" ]]; then
+            sleep "$INTERVAL"
+        fi
+    done
 }
 
 main "$@"
