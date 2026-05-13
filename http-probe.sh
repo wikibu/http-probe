@@ -55,6 +55,8 @@ main() {
     echo "开始探测: $URL"
     echo "间隔: ${INTERVAL}s, 次数: ${COUNT:-无限}"
 
+    # bash 3.2 (macOS default) does not support declare -A, so use a space-separated
+    # string + sort|uniq -c for counting. Fine for typical probe counts.
     local all_codes=""
     local total=0
     local current=0
@@ -62,6 +64,7 @@ main() {
     print_stats() {
         local line
         line=$(echo "$all_codes" | tr ' ' '\n' | sort | uniq -c | awk '{printf "[%s] %s | ", $2, $1}')
+        line="${line% |}"
         line="${line}total: ${total}"
         echo "$line"
     }
