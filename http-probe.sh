@@ -113,6 +113,7 @@ main() {
     }
 
     trap print_final_summary EXIT
+    trap 'exit 0' INT TERM
 
     probe_once() {
         local http_code response
